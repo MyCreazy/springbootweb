@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: springbootweb
+  profiles:
+    active: dev
+  aop:
+    auto: true
+    proxy-target-class: true

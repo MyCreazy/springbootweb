@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="renderer" content="webkit|ie-comp|ie-stand">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+    <meta http-equiv="Cache-Control" content="no-siteapp"/>
+    <link type="image/x-icon" href="../favicon.ico">
+    <style type="text/css">
+        table {
+            table-layout: fixed;
+        }
+
+        .table tbody tr td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
+
+    <script src="../framework/lib/jquery/1.9.1/jquery.min.js"></script>
+    <script src="../framework/lib/layer/2.4/layer.js"></script>
+    <script src="../angular-1.7.2/angular.min.js"></script>
+
+    <link rel="stylesheet" href="../bootstrap-4.0.0-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../bootstrap-4.0.0-dist/css/bootstrap-table.css">
+    <script src="../bootstrap-4.0.0-dist/js/popper.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap.min.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap-table.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap-table-zh-CN.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap.bundle.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/popper.js"></script>
+    <script src="utils.js"></script>
+    <script type="text/javascript">
+        var app = angular.module("infoApp", []);
+        app.controller("initTable", ['$scope', '$compile', function ($scope, $compile) {
+            $("#listId").bootstrapTable({
+                url: '/hqltask/queryallhqljob',
+                method: 'post',
+                queryParams:function (params) {
+                    var targetTableName= document.getElementById("targetTableName").value;
+                    var examineResult=document.getElementById("examineResultSearch").value;
+                    var commitUser=document.getElementById("commitUser").value;
+                    return{
+                        targetTableName:targetTableName,
+                        examineResult:examineResult,
+                        commitUser:commitUser
+                    };
+                },
+                contentType: 'application/x-www-form-urlencoded',
+                pagination: true,
+                pageSize: 10,
+                pageList: [10, 15, 20, 50, 100],
+                uniqueId: "targettablename",
+                async: true,
+                columns: [
+                    {
+                        field: "targettablename",
+                        align: 'center',
+                        title: "目标表名称"
+                    }, {
+                        field: "dependTableName",
+                        align: 'center',
+                        title: "依赖的表"
+                    },
+                    {
+                        field: "committer",
+                        align: 'center',
+                        title: "提交者"
+                    },
+                    {
+                        field: "priority",
+                        align: 'center',
+                        title: "优先级"
+                    }, {
+                        field: "insert_time",
+                        align: 'center',
+                        title: "添加时间"
+                    }, {
+                        field: "status",
+                        title: "审核状态",
+                        align: 'center',
+                        formatter: function (value, row, index) {
+                            if (value == "10F")
+                                return "待审核";
+                            else if (value == "10A")
+                                return "已上线";
+                            else if (value == "10X")
+                                return "已下线";
+                            else if (value == "10C")
+                                return "未通过";
+                            else if (value == "10R")
+                                return "审核中";
+                        }
+                    }, {
+                        field: "operate",
+                        title: "操作",
+                        align: 'center',
+                        formatter: function (value, row, index) {
+                            str = "<button id=\"examinehql\" class=\"btn btn-warning\" type=\"button\" onclick=\"examineHql(" + "'" + value + "'" + ")\">审核</button>    "
+                            str += "<button id=\"deletehql\" class=\"btn btn-warning\" type=\"button\" onclick=\"delHql(" + "'" + value + "'" + ")\">下线</button>"
+                            return str;
+                        }
+                    }
+                ]
+            });
+        }]);
+
+        /*
+        * 删除hql
+        **/
+        function delHql(hqlname) {
+            layer.confirm('确定要下线,请三思!!!', {
+                btn: ['是', '否']
+            }, function (index) {
+                ////要删除
+                var delpostdata = {
+                    hqlname: hqlname
+                }
+                $.ajax({
+                    type: 'post',
+                    url: '/hqltask/delhql',
+                    cache: false,
+                    dataType: 'text',
+                    async: false,
+                    contentType: 'application/json;charset=UTF-8',
+                    data: JSON.stringify(delpostdata),
+                    success: function (data) {
+                        layer.alert(data, {icon: 1});
+                        layer.close(index);
+                    },
+                    error: function (errmsg) {
+                        layer.close();
+                        layer.alert("下线失败", {icon: 2});
+                    }
+                });
+
+            }, function () {
+                layer.close();
+            });
+
+        }
+
+        /**
+         * 审核HQL
+         * @param hqlname
+         */
+        function examineHql(hqlname) {
+            layer.open({
+                type: 1,
+                title: "审核HQL",
+                area: ['440px', '40%'],
+                shadeClose: true,
+                skin: 'layui-layer-lan',
+                content: $("#examinehqltaskdiv"),
+                btn: ['保存', '取消'],
+                btn1: function (index, layero) {
+                    var loading = layer.load(1, {
+                        shade: [0.1, '#fff'],
+                        shadeClose: false
+                    });
+                    var priorityText = document.getElementById("priorityText").value;
+                    var examineresult = document.getElementById("examineresult").value;
+                    var examinepostdata = {
+                        hqlname: hqlname,
+                        priorityText: priorityText,
+                        examineresult: examineresult
+                    }
+                    $.ajax({
+                        type: 'post',
+                        url: '/hqltask/examinehql',
+                        cache: false,
+                        dataType: 'text',
+                        contentType: 'application/json;charset=UTF-8',
+                        data: JSON.stringify(examinepostdata),
+                        success: function (data) {
+                            layer.close(loading);
+                            layer.alert("审核完成", {icon: 1});
+                        },
+                        error: function (errmsg) {
+                            layer.close(loading);
+                            layer.alert("审核失败", {icon: 2});
+                        }
+                    });
+                },
+                btn2: function (index, layero) {
+                    layer.close(index);
+                }
+            });
+        }
+
+ function searchSub() {
+     $("#listId").bootstrapTable('refresh');
+ }
+        
+    </script>
+
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="../framework/lib/html5shiv.js"></script>
+    <script type="text/javascript" src="../framework/lib/respond.min.js"></script>
+    <![endif]-->
+    <link rel="stylesheet" type="text/css" href="../framework/static/h-ui/css/H-ui.min.css"/>
+    <link rel="stylesheet" type="text/css" href="../framework/static/h-ui.admin/css/H-ui.admin.css"/>
+    <link rel="stylesheet" type="text/css" href="../framework/lib/Hui-iconfont/1.0.8/iconfont.css"/>
+    <!--[if IE 6]>
+    <![endif]-->
+</head>
+<body ng-app="infoApp" ng-controller="initTable">
+<nav class="breadcrumb"><i class="Hui-iconfont">&#xe67f;</i> 首页 <span class="c-gray en">&gt;</span> 任务管理 <span
+        class="c-gray en">&gt;</span> 我的HQL任务
+</nav>
+<div class="page-container" style="padding-top: 0px;">
+    <div class="text-c">
+        <label>目标表名:</label>
+        <input type="text" name="" id="targetTableName" placeholder="目标表名" style="width:200px" class="input-text">
+        &nbsp;&nbsp; <label>提交者:</label>
+        <input type="text" name="" id="commitUser" placeholder="提交者" style="width:200px" class="input-text">
+        <span class="select-box inline">审核状态:
+		<select id="examineResultSearch" class="select">
+			<option value="0">全部</option>
+            <option value="1">已上线</option>
+			<option value="2">已下线</option>
+            <option value="3">未通过</option>
+            <option value="4">待审核</option>
+            <option value="5">审核中</option>
+		</select>
+		</span>
+        <button style="margin-left: 10px;" class="btn btn-success" type="submit" onclick="searchSub();"><i class="Hui-iconfont">&#xe665;</i> 查询</button>
+    </div>
+    <br>
+    <div>
+        <table id="listId" class="table table-bordered table-striped"></table>
+    </div>
+</div>
+
+
+<div class="row"
+     style="width: 410px; margin-left: 7px; margin-top: 10px; display: none"
+     id="examinehqltaskdiv">
+    <div class="input-group">
+        <label class="form-inline">优先级别 :<input
+                id="priorityText" type="text" class="form-control"
+                placeholder="请输入优先级，默认为1"> </label>
+    </div>
+
+
+    <div class="form-group" style="margin-top: 20px">
+        <label class="form-inline">审核结果 :
+            <select class="form-control" id="examineresult">
+                <option>通过</option>
+                <option>不通过</option>
+            </select>
+        </label>
+    </div>
+
+</div>
+
+
+</body>
+</html>

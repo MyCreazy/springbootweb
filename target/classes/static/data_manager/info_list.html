@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="renderer" content="webkit|ie-comp|ie-stand">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+    <meta http-equiv="Cache-Control" content="no-siteapp"/>
+    <link type="image/x-icon" href="../favicon.ico">
+    <style type="text/css">
+        table {
+            table-layout: fixed;
+        }
+
+        .table tbody tr td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+
+    </style>
+
+    <script src="../framework/lib/jquery/1.9.1/jquery.min.js"></script>
+    <script src="../framework/lib/layer/2.4/layer.js"></script>
+    <script src="../angular-1.7.2/angular.min.js"></script>
+
+    <link rel="stylesheet" href="../bootstrap-4.0.0-dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../bootstrap-4.0.0-dist/css/bootstrap-table.css">
+    <script src="../bootstrap-4.0.0-dist/js/popper.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap.min.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap-table.js"></script>
+    <script src="../bootstrap-4.0.0-dist/js/bootstrap-table-zh-CN.js"></script>
+
+    <script src="utils.js"></script>
+    <script type="text/javascript">
+
+        /*开始试跑*/
+        function startruning() {
+            document.getElementById('logtext').innerHTML = "暂无日志信息";
+            document.getElementById('successflagelabel').innerText = "0";
+            var hqltext = document.getElementById("hqltext").value;
+            var hqlcomment = document.getElementById("hqlcomment").value;
+            if(hqltext==""||hqltext==null||hqltext==undefined)
+            {
+                layer.alert('HQL不允许为空', {icon: 2});
+                return;
+            }
+
+            layer.confirm('HQL是否检查无误，确定要提交？', {
+                btn: ['是', '否']
+            }, function (index) {
+                layer.close(index);
+                var loading=  layer.load(1, {
+                    shade: [0.1,'#fff'],
+                    shadeClose: false
+                });
+                var postdata = {
+                    hqltext: hqltext,
+                    hqlcomment: hqlcomment
+                }
+                $.ajax({
+                    type: 'post',
+                    url: '/hqltask/runhql',
+                    cache: false,
+                    dataType: 'text',
+                    contentType: 'application/json;charset=UTF-8',
+                    data: JSON.stringify(postdata),
+                    success: function (data) {
+                        if (data.search("###success###") != -1) {
+                            /*如果试跑成功，就设置为看点击提交任务按钮*/
+                            document.getElementById('successflagelabel').setAttribute("val","success");
+                            window.location.href="../data_manager/hql_job_list.html";
+                        }
+                        else {
+                            layer.alert('试跑失败', {icon: 2});
+                        }
+
+                        document.getElementById('logtext').innerHTML = data;
+                        layer.close(loading);
+
+                    },
+                    error: function (errmsg) {
+                        layer.close(loading);
+                        document.getElementById('logtext').innerHTML = errmsg.responseText;
+                        layer.alert('试跑失败', {icon: 1});
+                    }
+                });
+
+
+            });
+        }
+
+        /*提交hql*/
+        function commithql() {
+            var successflag = document.getElementById("successflagelabel").getAttribute("val");
+            if (successflag === "success") {
+                var loading=  layer.load(1, {
+                    shade: [0.1,'#fff'],
+                    shadeClose: false
+                });
+                ////像后台提交数据，这里传到后台的参数只需要hql,因为要解析出依赖的表，以及维护每个用户提交的任务
+                var hqltext = document.getElementById("hqltext").value;
+                var postdata = {
+                    hqltext: hqltext
+                }
+                $.ajax({
+                    type: 'post',
+                    url: '/hqltask/commmithql',
+                    cache: false,
+                    dataType: 'text',
+                    contentType: 'application/json;charset=UTF-8',
+                    data: JSON.stringify(postdata),
+                    success: function (data) {
+                        layer.alert("提交成功", {icon: 1});
+                        document.getElementById('successflagelabel').setAttribute("val","");
+                        layer.close(loading);
+                    },
+                    error: function (errmsg) {
+                        layer.alert("提交异常", {icon: 1});
+                        layer.close(loading);
+                    }
+                });
+            }
+            else if (successflag === "") {
+                layer.alert('不可重复提交HQL', {icon: 1});
+            }
+            else {
+                //说明不成功
+                layer.alert('试跑失败，无法提交HQL', {icon: 2});
+            }
+
+        }
+
+        /*查看执行日志*/
+        function executeLog() {
+            layer.open({
+                type: 1,
+                title: '试跑执行日志',
+                shadeClose: true,
+                shade: false,
+                maxmin: true, //开启最大化最小化按钮
+                area: ['893px', '600px'],
+                content: $("#logtext").html()
+            });
+        }
+    </script>
+
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="../framework/lib/html5shiv.js"></script>
+    <script type="text/javascript" src="../framework/lib/respond.min.js"></script>
+    <![endif]-->
+    <link rel="stylesheet" type="text/css" href="../framework/static/h-ui/css/H-ui.min.css"/>
+    <link rel="stylesheet" type="text/css" href="../framework/static/h-ui.admin/css/H-ui.admin.css"/>
+    <link rel="stylesheet" type="text/css" href="../framework/lib/Hui-iconfont/1.0.8/iconfont.css"/>
+    <!--[if IE 6]>
+    <![endif]-->
+</head>
+<body ng-app="infoApp" ng-controller="initTable">
+<nav class="breadcrumb"><i class="Hui-iconfont">&#xe67f;</i> 首页 <span class="c-gray en">&gt;</span> 任务管理 <span
+        class="c-gray en">&gt;</span> 添加HQL任务
+</nav>
+<div class="page-container" style="padding-top: 0px;">
+
+    <span class="c-gray en" id="one">请在下面编辑HQL注释:</span>
+
+    <textarea class="form-control" id="hqlcomment" placeholder="输入HQL备注信息" name="hqlcomment" rows="3"></textarea>
+    <br/>
+    <span class="c-gray en" id="two">请在下面文本框编辑HQL:</span>
+
+    <textarea class="form-control" id="hqltext" name="hqltext" placeholder="输入HQL内容" rows="12"></textarea>
+    <br/>
+    <p>
+        <button type="button" class="btn btn-primary btn-lg " onclick="startruning()">试跑HQL</button>
+    </p>
+
+    <textarea class="form-control" id="logtext" name="logtext" rows="3" style="display: none">输入HQL内容</textarea>
+</div>
+
+<!--用于存储日志-->
+<label style="display: none" id="successflagelabel" val="0"></label>
+
+
+</body>
+</html>
